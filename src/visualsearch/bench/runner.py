@@ -38,11 +38,18 @@ def evaluate(
     k: int,
     labels: np.ndarray | None = None,
     query_labels: np.ndarray | None = None,
+    build: bool = True,
 ) -> dict:
-    """Measure one index. Queries run one at a time, as an API would serve them."""
-    start = perf_counter()
-    index.build(index_vectors)
-    build_seconds = perf_counter() - start
+    """Measure one index. Queries run one at a time, as an API would serve them.
+
+    Pass `build=False` to reuse an index that is already built (for example to sweep a
+    search-time setting); build_seconds is then NaN.
+    """
+    build_seconds = float("nan")
+    if build:
+        start = perf_counter()
+        index.build(index_vectors)
+        build_seconds = perf_counter() - start
 
     for query in queries[:_WARMUP_QUERIES]:
         index.search(query, k)
@@ -70,9 +77,14 @@ def evaluate(
 
 
 def _candidate_fraction(index: Index, queries: np.ndarray, num_items: int) -> float:
-    """Share of the dataset the index ranks per query (1.0 for exhaustive search)."""
+    """Share of the dataset the index ranks per query.
+
+    1.0 for exhaustive search, NaN for indexes (like HNSW) that don't expose a candidate set.
+    """
+    if isinstance(index, BruteForceIndex):
+        return 1.0
     candidates = getattr(index, "candidates", None)
     if candidates is None:
-        return 1.0
+        return float("nan")
     sample = queries[:_CANDIDATE_SAMPLE]
     return float(np.mean([len(candidates(query)) for query in sample]) / num_items)

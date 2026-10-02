@@ -3,7 +3,7 @@ import pytest
 
 from visualsearch.bench.metrics import category_precision, recall_at_k
 from visualsearch.bench.runner import evaluate, exact_neighbors, split_queries
-from visualsearch.index import BruteForceIndex, LSHIndex
+from visualsearch.index import BruteForceIndex, HNSWIndex, LSHIndex
 
 
 def test_recall_counts_overlap_and_penalizes_padding():
@@ -61,6 +61,19 @@ def test_exact_search_scores_perfect_recall_against_itself(dataset):
     assert 0 <= result["category_precision@5"] <= 1
     assert result["p50_ms"] <= result["p95_ms"]
     assert result["memory_mb"] > 0
+
+
+def test_hnsw_has_no_candidate_fraction_and_prebuilt_index_skips_build_time(dataset):
+    index_vectors, queries, _, _ = dataset
+    truth = exact_neighbors(index_vectors, queries, k=5)
+    index = HNSWIndex(ef_construction=50)
+    index.build(index_vectors)
+
+    result = evaluate(index, index_vectors, queries, truth, 5, build=False)
+
+    assert np.isnan(result["candidate_fraction"])
+    assert np.isnan(result["build_seconds"])
+    assert result["recall@5"] > 0.9
 
 
 def test_lsh_reports_candidate_fraction_below_one(dataset):
