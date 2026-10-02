@@ -43,7 +43,8 @@ def evaluate(
     """Measure one index. Queries run one at a time, as an API would serve them.
 
     Pass `build=False` to reuse an index that is already built (for example to sweep a
-    search-time setting); build_seconds is then NaN.
+    search-time setting); build_seconds and memory_mb are then NaN, since the caller already
+    measured them for that index.
     """
     build_seconds = float("nan")
     if build:
@@ -64,7 +65,7 @@ def evaluate(
 
     result = {
         "build_seconds": build_seconds,
-        "memory_mb": index.memory_bytes() / 1e6,
+        "memory_mb": index.memory_bytes() / 1e6 if build else float("nan"),
         "p50_ms": float(np.percentile(latencies_ms, 50)),
         "p95_ms": float(np.percentile(latencies_ms, 95)),
         "qps": float(1000 / latencies_ms.mean()),

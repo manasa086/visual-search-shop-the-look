@@ -73,6 +73,7 @@ def test_hnsw_has_no_candidate_fraction_and_prebuilt_index_skips_build_time(data
 
     assert np.isnan(result["candidate_fraction"])
     assert np.isnan(result["build_seconds"])
+    assert np.isnan(result["memory_mb"])
     assert result["recall@5"] > 0.9
 
 

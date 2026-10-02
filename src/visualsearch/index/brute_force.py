@@ -9,7 +9,8 @@ import numpy as np
 from visualsearch.index.base import Index
 from visualsearch.index.utils import check_matrix, normalize, top_k
 
-_BATCH_CHUNK = 256
+_MAX_QUERIES_PER_CHUNK = 256
+_MAX_SCORES_PER_CHUNK = 32_000_000  # caps the (queries x items) score matrix at about 128 MB
 
 
 class BruteForceIndex(Index):
@@ -38,9 +39,10 @@ class BruteForceIndex(Index):
             raise ValueError(f"expected a (q, d) matrix, got shape {queries.shape}")
         self._check_dim(queries.shape[1:])
         queries = normalize(queries)
+        chunk = max(1, min(_MAX_QUERIES_PER_CHUNK, _MAX_SCORES_PER_CHUNK // len(vectors)))
         results = [
-            top_k(queries[start : start + _BATCH_CHUNK] @ vectors.T, k)
-            for start in range(0, len(queries), _BATCH_CHUNK)
+            top_k(queries[start : start + chunk] @ vectors.T, k)
+            for start in range(0, len(queries), chunk)
         ]
         return (
             np.concatenate([ids for ids, _ in results]),

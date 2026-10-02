@@ -66,13 +66,13 @@ def main() -> None:
 
     for m in HNSW_M:
         index = HNSWIndex(M=m, ef_construction=HNSW_EF_CONSTRUCTION, seed=args.seed)
-        build_seconds = None  # the graph is built once per M, then searched at several ef values
+        built = None  # the graph is built once per M, then searched at several ef values
         for ef in HNSW_EF_SEARCH:
             index.set_ef_search(ef)
             settings = f"M={m} ef_search={ef}"
-            row = run("hnsw", settings, index, build=build_seconds is None, M=m, ef_search=ef)
-            build_seconds = row["build_seconds"] if build_seconds is None else build_seconds
-            row["build_seconds"] = build_seconds
+            row = run("hnsw", settings, index, build=built is None, M=m, ef_search=ef)
+            built = built or {key: row[key] for key in ("build_seconds", "memory_mb")}
+            row.update(built)
             rows.append(row)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
