@@ -13,9 +13,9 @@ Dataset: [Caltech-256](https://data.caltech.edu/records/nyy15-4j048) (29,780 ima
 - [x] Project setup, CLIP encoder, data and embedding scripts, command-line search
 - [x] Exact brute-force index, LSH index (from scratch), HNSW index
 - [x] Benchmark harness: recall@k, category precision, latency, memory, build time
-- [ ] FastAPI service
-- [ ] React + TypeScript frontend
-- [ ] Docker, CI, scaling experiment
+- [x] FastAPI service: text, photo and "more like this" search
+- [x] React + TypeScript frontend: masonry results, drag-and-drop and paste, switchable search method
+- [ ] Docker and CI
 
 ## Results
 
@@ -50,8 +50,9 @@ What the numbers show:
   is a single optimized matrix-vector product that takes under a millisecond, while each LSH
   query pays for hashing in every table, many small lookups, and gathering candidate vectors
   in Python. The "images ranked" column shows the algorithmic saving; the latency shows what
-  that saving costs in practice here. The advantage of LSH should show at larger scale, which
-  the planned scaling experiment will test.
+  that saving costs in practice here. I only tested this catalog size. Exact search keeps
+  getting slower as a catalog grows, so approximate indexes are expected to pay off more at
+  larger scale, but I have not measured that.
 - **Approximate search costs little in what users see.** Category precision falls from 0.858
   (exact) to 0.822 for an LSH setting with only 0.744 recall, and stays at 0.86 for HNSW.
 - **Memory is dominated by the stored vectors** (59 MB for 28,780 x 512 floats); every index
@@ -77,6 +78,41 @@ uv run python scripts/run_benchmark.py     # regenerate results/ (about 30 secon
 Embedding all 29,780 images took about 2.5 minutes on an Apple M5. For a quick trial run, use
 `build_metadata.py --limit 2000` before embedding.
 
+### Run the app
+
+Needs [Node.js](https://nodejs.org/) for the frontend.
+
+```bash
+npm --prefix frontend install
+npm --prefix frontend run build         # builds the UI into frontend/dist
+uv run python -m visualsearch.api       # serves the API and the UI at http://127.0.0.1:8000
+```
+
+The server loads the CLIP model and builds all three indexes at startup, which takes a few
+seconds. For frontend development with hot reload, run the API as above and
+`npm --prefix frontend run dev` in another terminal (UI at http://localhost:5173, which proxies
+`/api` to port 8000).
+
+In the UI you can type a description, upload or drop or paste a photo, or click any result to
+see more like it. A picker switches between HNSW, LSH and brute force, and the page shows the
+index time and query-embedding time for every search so the trade-offs are visible.
+
+## API
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/health` | Catalog size, available indexes, default index |
+| `POST /api/search/text` | JSON `{"query": "...", "k": 10, "index": "hnsw"}` |
+| `POST /api/search/image?k=10&index=hnsw` | Multipart upload in a `file` field (JPEG, PNG or WebP, up to 10 MB) |
+| `GET /api/search/similar/{id}?k=10&index=hnsw` | Catalog items most like item `id`, excluding itself |
+| `GET /api/images/{id}` | The catalog image |
+
+`k` is 1 to 50 and `index` is `hnsw` (default), `lsh` or `brute-force`. Every search response
+carries `embed_ms` (embedding the query) and `search_ms` (inside the index) alongside the
+results. Interactive docs are served at `/docs`. Bad input returns 4xx (422 for invalid
+parameters, 400 for a file that is not an image, 413 for uploads over the limit, 404 for
+unknown ids), and each request is logged with its timing.
+
 ## How it works
 
 ```
@@ -98,8 +134,13 @@ swapped in.
 ## Development
 
 ```bash
-uv run pytest        # 53 tests
-uv run ruff check .  # lint
+uv run pytest                        # 85 backend tests
+uv run ruff check . && uv run ruff format --check .
+npm --prefix frontend test           # 22 frontend tests
+npm --prefix frontend run typecheck
 ```
+
+API tests run against a tiny colour-based catalog and a stand-in encoder, so they need
+neither the dataset nor the CLIP weights.
 
 Datasets and embeddings live in `data/`, which is git-ignored.
