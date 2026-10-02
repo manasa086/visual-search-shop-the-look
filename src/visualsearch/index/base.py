@@ -23,6 +23,10 @@ class Index(ABC):
         Approximate indexes may return fewer than k results.
         """
 
+    @abstractmethod
+    def memory_bytes(self) -> int:
+        """Approximate size of the built index in bytes, including the stored vectors."""
+
     def search_batch(self, queries: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
         """Search a (q, d) matrix of queries; returns (q, k) ids and scores.
 

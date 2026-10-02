@@ -10,6 +10,14 @@ def normalize(x: np.ndarray) -> np.ndarray:
     return x / np.maximum(norms, 1e-12)
 
 
+def check_matrix(vectors: np.ndarray) -> np.ndarray:
+    """Validate that `vectors` is a non-empty (n, d) matrix and return it as an array."""
+    vectors = np.asarray(vectors)
+    if vectors.ndim != 2 or len(vectors) == 0:
+        raise ValueError(f"expected a non-empty (n, d) matrix, got shape {vectors.shape}")
+    return vectors
+
+
 def top_k(scores: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
     """Return the k highest scores per row of `scores`, best first, as (ids, scores).
 

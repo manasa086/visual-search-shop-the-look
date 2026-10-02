@@ -7,7 +7,7 @@ approximate indexes are measured against.
 import numpy as np
 
 from visualsearch.index.base import Index
-from visualsearch.index.utils import normalize, top_k
+from visualsearch.index.utils import check_matrix, normalize, top_k
 
 _BATCH_CHUNK = 256
 
@@ -20,10 +20,10 @@ class BruteForceIndex(Index):
         return 0 if self._vectors is None else len(self._vectors)
 
     def build(self, vectors: np.ndarray) -> None:
-        vectors = np.asarray(vectors)
-        if vectors.ndim != 2 or len(vectors) == 0:
-            raise ValueError(f"expected a non-empty (n, d) matrix, got shape {vectors.shape}")
-        self._vectors = normalize(vectors)
+        self._vectors = normalize(check_matrix(vectors))
+
+    def memory_bytes(self) -> int:
+        return 0 if self._vectors is None else self._vectors.nbytes
 
     def search(self, query: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
         vectors = self._require_built()
