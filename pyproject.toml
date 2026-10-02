@@ -11,10 +11,14 @@ dependencies = [
     "torch>=2.2",
     "open-clip-torch>=2.24",
     "hnswlib>=0.8.0",
+    "fastapi>=0.142.2",
+    "uvicorn>=0.54.0",
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "matplotlib>=3.11.2",
     "pytest>=8.0",
     "ruff>=0.5",
@@ -39,3 +43,6 @@ src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.File"]

@@ -13,3 +13,6 @@ __pycache__/
 # Frontend (added later)
 node_modules/
 dist/
+
+# Local assistant settings
+.claude/
